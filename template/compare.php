@@ -1,5 +1,7 @@
 <?php
 $array_sql = array();
+$arrayNewTable = array();
+$i = 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -75,7 +77,13 @@ $array_sql = array();
         </tr>
     <?php foreach ($tables as $tableName => $data) { ?>
         <tr class="data">
-            <?php foreach (array('fArray', 'sArray') as $blockType) { ?>
+            <?php foreach (array('fArray', 'sArray') as $blockType) {
+				$newTable = false;
+				if($blockType == 'fArray' and  empty($data['sArray'])){
+					$newTable = true;
+					$arrayNewTable[$i][] = 'CREATE TABLE IF NOT EXISTS '.$tableName.' (';
+				}
+			?>
             <td class="type-<?php echo $_REQUEST['action']; ?>">
                 <h3><?php echo $tableName; ?> <sup style="color: red;"><?php 
                 if ($data != null && isset($data[$blockType]) && $data[$blockType] != null) {
@@ -91,26 +99,65 @@ $array_sql = array();
                 </div>
                 <?php if ($data[$blockType]) { ?>
                     <ul>
-                        <?php foreach ($data[$blockType] as $fieldName => $tparam) { 
-							$sql='';
-							if (isset($tparam['isNew']) && $tparam['isNew'] and is_array($data['sArray']) and $blockType == 'fArray') {
-								$fieldPrev = '';
-								$new_array = $data[$blockType];
-								foreach ($new_array as $fieldName2 => $tparam2) {
-									if($fieldName != $fieldName2){
-										$fieldPrev = $fieldName2;
-									}else{
-										break;
+                        <?php
+							$primary	= false;
+							$primaryKey	= '';
+							foreach ($data[$blockType] as $fieldName => $tparam) { 
+							$sql = '';
+							if (isset($tparam['isNew']) && $tparam['isNew'] and  $blockType == 'fArray') {
+								// print "<pre>";
+								// // print_r($data[$blockType]);
+								// print_r($tparam);
+								// print "</pre>";
+								if($newTable == true and $blockType == 'fArray'){
+									$sql = $fieldName.' '.$tparam['dtype'];
+									$sql .= $tparam['inull'] == 'NO' ? ' NOT ' : ' ';
+									$sql .= 'NULL';
+									$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."'" : '';
+									$sql .= $tparam['autoincrement'] != '' ? ' '.$tparam['autoincrement'] : '';
+									
+									if($tparam['pkey'] == 'PRI'){
+										$primary = true;
+										$primaryKey = ' PRIMARY KEY ('.$fieldName.')';
 									}
+									$sql .= $primary === true ? ',' : '';
+									// print "<pre>";
+									// print_r($sql);
+									// print "</pre>";
+									$arrayNewTable[$i][] = $sql;
+									
+// DROP TABLE IF EXISTS `aprueba`;
+// CREATE TABLE IF NOT EXISTS `aprueba` (
+  // `codigo` int(1) NOT NULL AUTO_INCREMENT,
+  // `nombre` varchar(20) COLLATE utf16_spanish2_ci NOT NULL,
+  // `descripcion` int(11) DEFAULT NULL,
+  // `estatus` tinyint(4) NOT NULL DEFAULT '1',
+  // PRIMARY KEY (`codigo`)
+// ) ENGINE=InnoDB;
 								}
-								$sql = 'ALTER TABLE '.$tparam['ARRAY_KEY_1'].' ADD '.$fieldName.' '.$tparam['dtype'];
-								$sql .= $tparam['inull'] == 'NO' ? ' NOT ' : ' ';
-								$sql .= 'NULL';
-								$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."' " : ' ';
-								$sql .= $fieldPrev != '' ? ' AFTER '.$fieldPrev : ' ';
-								$sql = trim($sql).';';
-								$array_sql[] = $sql;
-								// print $sql;
+								else
+								{
+									$fieldPrev = '';
+									$new_array = $data[$blockType];
+									foreach ($new_array as $fieldName2 => $tparam2) {
+										if($fieldName != $fieldName2){
+											$fieldPrev = $fieldName2;
+										}else{
+											break;
+										}
+									}
+									$sql = 'ALTER TABLE '.$tparam['ARRAY_KEY_1'].' ADD '.$fieldName.' '.$tparam['dtype'];
+									$sql .= $tparam['inull'] == 'NO' ? ' NOT ' : ' ';
+									$sql .= 'NULL';
+									$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."' " : ' ';
+									$sql .= $fieldPrev != '' ? ' AFTER '.$fieldPrev : ' ';
+									$sql = trim($sql).';';
+									$array_sql[] = $sql;
+									// print $sql;
+									
+									
+								}
+								
 							}
 							
 							if(isset($tparam['changeType']) && $tparam['changeType'] && $blockType == 'fArray'){
@@ -118,8 +165,8 @@ $array_sql = array();
 								$sql = 'ALTER TABLE '.$tparam['ARRAY_KEY_1'].' CHANGE '.$fieldName.' '.$fieldName.' '.$tparam['dtype'];
 								$sql .= $tparam['inull'] == 'NO' ? ' NOT ' : ' ';
 								$sql .= 'NULL';
-								$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."' " : ' ';
-								$sql .= $tparam['autoincrement'] != '' ? $tparam['autoincrement'] : '';
+								$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."'" : '';
+								$sql .= $tparam['autoincrement'] != '' ? ' '.$tparam['autoincrement'] : '';
 								$sql = trim($sql).';';
 								$i++;
 								$array_sql[] = $sql;
@@ -133,7 +180,22 @@ $array_sql = array();
                                     <?php echo $tparam['dtype']; ?>
                                 </span>
                             </li>
-                        <?php } ?>
+                        <?php
+						
+						}
+						
+						if($newTable == true and $blockType == 'fArray'){
+							if($primary === true) $arrayNewTable[$i][] = $primaryKey;
+							
+							$sql = ')';
+							$sql .= isset($additionalTableInfo[$tableName][$blockType]['engine']) == true ? ' ENGINE '.$additionalTableInfo[$tableName][$blockType]['engine'].';' : ';';
+							$arrayNewTable[$i][] = $sql;
+							$i++;
+							// print "<pre>";
+							// print_r($arrayNewTable);
+							// print "</pre>";
+						}
+						?>
                     </ul>
                 <?php } ?>
                 <?php if ($data != null && isset($data[$blockType]) && $data[$blockType] != null && count($data[$blockType]) && in_array($_REQUEST['action'], array('tables', 'views'))) { ?><a
@@ -151,7 +213,18 @@ $array_sql = array();
 				<tr>
 					<td><?php print $value; ?></td>
 				</tr>
-			<?php } ?>
+			<?php }
+			
+			foreach($arrayNewTable as $index => $value){?>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			<?php foreach($value as $value2){?>
+				<tr>
+					<td><?php echo $value2; ?></td>
+				</tr>
+			<?php }
+			} ?>
 		</table>
     </div>
 	
