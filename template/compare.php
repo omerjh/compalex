@@ -1,12 +1,15 @@
+<?php
+$array_sql = array();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <title>COMPALEX - database schema compare tool</title>
-    <script src="/public/js/jquery.min.js"></script>
-    <script src="/public/js/functional.js"></script>
+    <script src="./public/js/jquery.min.js"></script>
+    <script src="./public/js/functional.js"></script>
     <style type="text/css" media="all">
-        @import url("/public/css/style.css");
+        @import url("./public/css/style.css");
     </style>
 </head>
 
@@ -50,6 +53,7 @@
             <td class="sp">
                 <a href="#" onclick="Data.showAll(this); return false;" class="active">all</a>
                 <a href="#" onclick="Data.showDiff(this); return false;">changed</a>
+                <a href="#" onclick="Data.showSql(this); return false;">SQL</a>
 
             </td>
         </tr>
@@ -87,7 +91,41 @@
                 </div>
                 <?php if ($data[$blockType]) { ?>
                     <ul>
-                        <?php foreach ($data[$blockType] as $fieldName => $tparam) { ?>
+                        <?php foreach ($data[$blockType] as $fieldName => $tparam) { 
+							$sql='';
+							if (isset($tparam['isNew']) && $tparam['isNew'] and is_array($data['sArray']) and $blockType == 'fArray') {
+								$fieldPrev = '';
+								$new_array = $data[$blockType];
+								foreach ($new_array as $fieldName2 => $tparam2) {
+									if($fieldName != $fieldName2){
+										$fieldPrev = $fieldName2;
+									}else{
+										break;
+									}
+								}
+								$sql = 'ALTER TABLE '.$tparam['ARRAY_KEY_1'].' ADD '.$fieldName.' '.$tparam['dtype'];
+								$sql .= $tparam['inull'] == 'NO' ? ' NOT ' : ' ';
+								$sql .= 'NULL';
+								$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."' " : ' ';
+								$sql .= $fieldPrev != '' ? ' AFTER '.$fieldPrev : ' ';
+								$sql = trim($sql).';';
+								$array_sql[] = $sql;
+								// print $sql;
+							}
+							
+							if(isset($tparam['changeType']) && $tparam['changeType'] && $blockType == 'fArray'){
+								
+								$sql = 'ALTER TABLE '.$tparam['ARRAY_KEY_1'].' CHANGE '.$fieldName.' '.$fieldName.' '.$tparam['dtype'];
+								$sql .= $tparam['inull'] == 'NO' ? ' NOT ' : ' ';
+								$sql .= 'NULL';
+								$sql .= $tparam['dvalue'] != '' ? " DEFAULT '".$tparam['dvalue']."' " : ' ';
+								$sql .= $tparam['autoincrement'] != '' ? $tparam['autoincrement'] : '';
+								$sql = trim($sql).';';
+								$i++;
+								$array_sql[] = $sql;
+								// print $sql;
+							}
+						?>
                             <li <?php if (isset($tparam['isNew']) && $tparam['isNew']) {
                                 echo 'style="color: red;" class="new" ';
                             } ?>><b style="white-space: pre"><?php echo $fieldName; ?></b>
@@ -107,6 +145,16 @@
         </tr>
     <?php } ?>
     </table>
+	<div class="sql">
+		<table class="table-sql">
+			<?php foreach($array_sql as $value){ ?>
+				<tr>
+					<td><?php print $value; ?></td>
+				</tr>
+			<?php } ?>
+		</table>
+    </div>
+	
     <p>&nbsp;</p>
     <hr />
     <p>For more information go to <a href="http://compalex.net" target="_blank">compalex.net</a></p>
